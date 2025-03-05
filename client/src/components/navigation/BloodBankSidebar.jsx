@@ -25,8 +25,8 @@ const BloodBankSidebar = () => {
         <>
             <nav
                 style={{ scrollbarWidth: 'thin' }}
-                className="custom-scrollbar w-[250px] bg-red-500 border-r border-r-gray-400 min-h-full overflow-y-scroll">
-                <div className="px-8 bg-yello h-full">
+                className="custom-scrollbar shrink-0 w-[250px] bg-red-500 border-r border-r-gray-400 min-h-full overflow-y-scroll">
+                <div className="px-8 h-full">
                     <div className="h-full flex flex-col">
                         <ul className="mt-8 flex flex-col gap-2">
                             {links.map((linkItem, index) => (
