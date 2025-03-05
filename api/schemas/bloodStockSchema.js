@@ -18,12 +18,14 @@ const bloodStockSchema = sequelize.define(
                 model: bloodBankSchema,
                 key: "id",
             },
+            unique: "unique_blood_bank_type",  // Unique combination
             comment: "Reference to the blood bank",
         },
 
         blood_type: {
             type: ENUM("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"),
             allowNull: false,
+            unique: "unique_blood_bank_type",  // Unique combination
             comment: "Blood type (ENUM for fixed values)",
         },
 
@@ -50,6 +52,12 @@ const bloodStockSchema = sequelize.define(
         timestamps: true,
         tableName: "blood_stock",
         comment: "Stores blood stock availability per blood bank",
+        indexes: [
+            {
+                unique: true,
+                fields: ["blood_bank_id_fk", "blood_type"],  // Ensures unique combination
+            },
+        ],
     }
 );
 
