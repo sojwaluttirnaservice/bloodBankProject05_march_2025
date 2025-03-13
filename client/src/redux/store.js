@@ -1,8 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
 
-import adminReducer from './slices/adminSlice.js';
-import bloodBankReducer from './slices/bloodBankSlice.js';
-import userReducer from './slices/userSlice.js';
+import { adminReducer } from './slices/adminSlice';
+import { bloodBankReducer } from './slices/bloodBankSlice.js';
+import { userReducer } from './slices/userSlice.js';
+
 
 const store = configureStore({
     reducer: {
@@ -12,4 +13,4 @@ const store = configureStore({
     },
 });
 
-export default store;
+export { store }

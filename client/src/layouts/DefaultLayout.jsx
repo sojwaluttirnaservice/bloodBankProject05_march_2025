@@ -1,6 +1,7 @@
 import React from 'react';
 import Navbar from '../components/navigation/Navbar';
 import { Outlet } from 'react-router';
+import Footer from '../components/footers/Footer';
 
 const DefaultLayout = () => {
     return (
@@ -11,6 +12,8 @@ const DefaultLayout = () => {
                 <main className="flex-grow">
                     <Outlet />
                 </main>
+
+                <Footer />
             </div>
         </>
     );

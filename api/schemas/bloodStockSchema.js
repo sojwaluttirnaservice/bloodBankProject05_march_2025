@@ -36,6 +36,11 @@ const bloodStockSchema = sequelize.define(
             comment: "Number of blood units available",
         },
 
+        price_per_unit: {
+            type: INTEGER,
+            allowNull: false,
+        },
+
         createdAt: {
             type: DATE,
             defaultValue: literal("CURRENT_TIMESTAMP"),

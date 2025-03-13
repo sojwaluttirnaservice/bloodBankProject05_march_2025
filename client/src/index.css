@@ -4,7 +4,7 @@
 
 @layer components {
     .container {
-        @apply container mx-auto;
+        @apply mx-auto;
     }
 }
 

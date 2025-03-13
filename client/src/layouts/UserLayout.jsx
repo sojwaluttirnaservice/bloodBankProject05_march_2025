@@ -1,11 +1,12 @@
 import React from 'react';
-import UserNavbar from '../components/navigation/UserNavbar';
+// import UserNavbar from '../components/navigation/UserNavbar';
 import { Outlet } from 'react-router';
+import Navbar from '../components/navigation/Navbar';
 
 const UserLayout = () => {
     return (
         <div className="relative flex flex-col min-h-lvh">
-            <UserNavbar />
+            <Navbar />
 
             <main className="flex-grow">
                 <Outlet />

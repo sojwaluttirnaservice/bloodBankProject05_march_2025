@@ -1,9 +1,12 @@
 const sequelize = require("../config/sequelize");
+const additionSchema = require("../schemas/additionSchema");
 const adminSchema = require("../schemas/adminSchema");
 const bloodBankSchema = require("../schemas/bloodBankSchema");
 const bloodStockSchema = require("../schemas/bloodStockSchema");
 const orderSchema = require("../schemas/orderSchema");
 const userSchema = require("../schemas/userSchema");
+
+
 
 
 
@@ -14,7 +17,6 @@ const getSync = async () => {
 
         let { models } = await sequelize.sync({ alter: true })
 
-       
         console.log(`Total tables created: ${Object.keys(models)?.length}`);
 
         console.log(

@@ -1,19 +1,22 @@
+const ordersController = require("../../controllers/ordersController");
 const getRouter = require("../../utils/getRouter");
 
 
 const orderRouter = getRouter();
 
 
-orderRouter.get('/')
+orderRouter.get('/', ordersController.getOrders)
 
-orderRouter.get('/o/:orderId')
+orderRouter.get('/o/:orderId', ordersController.getOrderDetails)
 
-orderRouter.get('/u/:userId')
+orderRouter.get('/u/:userId', ordersController.getOrdersByUser)
 
-orderRouter.get('/bb/:bloodBankId')
+orderRouter.get('/bb/:bloodBankId', ordersController.getOrdersByBloodBank)
 
-orderRouter.post('/')
+orderRouter.post('/', ordersController.add)
 
-orderRouter.put('/')
+// orderRouter.put('/')
+
+orderRouter.put('/status', ordersController.updateStatus)
 
 module.exports = orderRouter

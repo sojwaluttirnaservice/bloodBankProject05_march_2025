@@ -20,7 +20,7 @@ const pool = mysql.createPool(
     // Port
     port: process.env.DB_PORT,
 
-    connectionLimit: 10,
+    connectionLimit: 20,
 
     queueLimit: 0,
 

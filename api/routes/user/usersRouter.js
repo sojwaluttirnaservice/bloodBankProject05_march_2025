@@ -1,13 +1,15 @@
+const usersController = require("../../controllers/usersController");
 const getRouter = require("../../utils/getRouter");
 
 const usersRouter = getRouter();
 
+usersRouter.get('/', usersController.getTotalUsers)
+
 usersRouter.get('/u/:userId')
 
-usersRouter.get('/')
 
-usersRouter.post('/')
+// usersRouter.post('/')
 
-usersRouter.put('/')
+// usersRouter.put('/')
 
 module.exports = usersRouter

@@ -4,6 +4,7 @@ const sequelize = require("../config/sequelize");
 
 
 
+
 const adminSchema = sequelize.define(
     "admins",
 

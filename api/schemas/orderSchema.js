@@ -32,6 +32,12 @@ const orderSchema = sequelize.define(
             comment: "Reference to the blood bank fulfilling the order",
         },
 
+        price_at_purchase: {
+            type: INTEGER,
+            allowNull: false,
+            comment: "Price of the blood unit at the purchasing time"
+        },
+
         blood_type: {
             type: ENUM("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"),
             allowNull: false,
