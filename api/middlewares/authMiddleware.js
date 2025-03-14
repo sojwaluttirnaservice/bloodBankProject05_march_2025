@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const asyncHandler = require("../utils/asyncHandler");
+const asyncHandler = require("../asyncHandler");
 
 // Function to extract token from request headers
 const extractToken = (req) => {

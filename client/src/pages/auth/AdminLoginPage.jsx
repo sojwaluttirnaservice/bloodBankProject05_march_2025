@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -11,10 +11,9 @@ const AdminLoginPage = () => {
     const admin = useSelector((state) => state.admin);
     const bloodBank = useSelector((state) => state.bloodBank);
 
-    const isUserLoggedIn = user && user.isAuthenticated && user.role == 'user' && user.token;
-    const isAdminLoggedIn = admin && admin.isAuthenticated && admin.role == 'admin' && admin.token;
-    const isBloodBankLoggedIn =
-        bloodBank && bloodBank.isAuthenticated && bloodBank.role == 'bloodBank' && bloodBank.token;
+    const isUserLoggedIn = user?.isAuthenticated && user?.role === 'user';
+    const isAdminLoggedIn = admin?.isAuthenticated && admin?.role === 'admin';
+    const isBloodBankLoggedIn = bloodBank?.isAuthenticated && bloodBank?.role === 'bloodBank';
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -31,6 +30,17 @@ const AdminLoginPage = () => {
         },
     });
 
+    // Memoized redirect logic to avoid unnecessary re-renders
+    const redirectComponent = useMemo(() => {
+        if (isUserLoggedIn) return <Navigate to="/" />;
+        if (isAdminLoggedIn) return <Navigate to="/admin/dashboard" />;
+        if (isBloodBankLoggedIn) return <Navigate to="/blood-banks/dashboard" />;
+        return null; // Ensure it always returns a value
+    }, [isUserLoggedIn, isAdminLoggedIn, isBloodBankLoggedIn]);
+
+    // If redirect condition is met, return the redirect component
+    if (redirectComponent) return redirectComponent;
+
     // Function to handle login
     const onSubmit = async (data) => {
         try {
@@ -38,7 +48,6 @@ const AdminLoginPage = () => {
 
             if (resData?.success) {
                 toast.success('Login successful!');
-                console.log(resData.data.admin);
                 dispatch(onLogin(resData?.data?.admin));
                 navigate('/admin/dashboard'); // Redirect to admin dashboard
             }
@@ -48,20 +57,8 @@ const AdminLoginPage = () => {
         }
     };
 
-    if (isUserLoggedIn) {
-        return <Navigate to={'/'} />;
-    }
-
-    if (isAdminLoggedIn) {
-        return <Navigate to={'/admin/dashboard'} />;
-    }
-
-    if (isBloodBankLoggedIn) {
-        return <Navigate to={'/blood-banks/dashboard'} />;
-    }
-
     return (
-        <div className="max-w-lg mx-auto mt-10 p-6 bg-white border shadow-md rounded-lg">
+        <div className="max-w-lg mx-auto my-10 p-6 bg-white border shadow-md rounded-lg">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Admin Login</h2>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

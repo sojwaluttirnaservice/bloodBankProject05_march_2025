@@ -6,6 +6,7 @@ import { AppBar, Toolbar, Typography, Button, Box, IconButton } from '@mui/mater
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import BloodtypeIcon from '@mui/icons-material/Bloodtype';
+import { AccountCircle, AdminPanelSettings } from '@mui/icons-material';
 
 const Navbar = () => {
     const user = useSelector((state) => state.user); // Get user state
@@ -92,18 +93,46 @@ const Navbar = () => {
                         </IconButton>
                     </Box>
                 ) : (
-                    <Button
-                        color="inherit"
-                        component={NavLink}
-                        to="/auth/user"
-                        startIcon={<PersonIcon />}
-                        sx={{
-                            textTransform: 'none',
-                            fontWeight: 'bold',
-                            color: '#D32F2F',
-                        }}>
-                        Login
-                    </Button>
+                    <>
+                        <div className="flex items-center gap-3">
+                            <Button
+                                color="inherit"
+                                component={NavLink}
+                                to="/auth/admin"
+                                startIcon={<AdminPanelSettings />}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    color: '#D32F2F',
+                                }}>
+                                Admin
+                            </Button>
+                            <Button
+                                color="inherit"
+                                component={NavLink}
+                                to="/auth/signup"
+                                startIcon={<AccountCircle />}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    color: '#D32F2F',
+                                }}>
+                                Signup
+                            </Button>
+                            <Button
+                                color="inherit"
+                                component={NavLink}
+                                to="/auth"
+                                startIcon={<PersonIcon />}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    color: '#D32F2F',
+                                }}>
+                                Login
+                            </Button>
+                        </div>
+                    </>
                 )}
             </Toolbar>
         </AppBar>

@@ -54,7 +54,7 @@ const AdminDashboardPage = () => {
                 color: '#333',
             }}>
             <Typography variant="h4" fontWeight="bold" textAlign="center" mb={3} color="error">
-                Blood Bank Admin Dashboard
+                Admin Dashboard
             </Typography>
 
             {loading ? (

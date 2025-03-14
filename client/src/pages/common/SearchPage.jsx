@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Box,
     Typography,
@@ -17,8 +17,13 @@ import BloodtypeIcon from '@mui/icons-material/Bloodtype';
 import SearchIcon from '@mui/icons-material/Search';
 import { states } from '../../dummyData/statesDistricts';
 import { instance } from '../../axiosInstance/axiosInstance';
+import { useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router';
 
 const SearchPage = () => {
+    const navigate = useNavigate();
+
     // State for filters
     const [bloodType, setBloodType] = useState('');
     const [state, setState] = useState('');
@@ -26,24 +31,18 @@ const SearchPage = () => {
     const [bloodBanks, setBloodBanks] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const [selectedBloodType, setSelectedBloodType] = useState();
+    // This one comes from the modal thing
 
     // Order request modal state
     const [selectedBank, setSelectedBank] = useState(null);
-    const [openModal, setOpenModal] = useState(false);
+    const [selectedBloodType, setSelectedBloodType] = useState();
     const [quantity, setQuantity] = useState(1);
+    const [urgencyLevel, setUrgencyLevel] = useState('NORMAL');
+    const [openModal, setOpenModal] = useState(false);
 
     // User authentication state
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [userId, setUserId] = useState(null);
 
-    useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user')); // Assume user data is stored in localStorage
-        if (user && user.id) {
-            setIsLoggedIn(true);
-            setUserId(user.id);
-        }
-    }, []);
+    const user = useSelector((state) => state.user);
 
     // Get districts based on selected state
     const districtsList = states.find((s) => s.state === state)?.districts || [];
@@ -80,10 +79,10 @@ const SearchPage = () => {
 
     // Handle Order Submission
     const handleSubmitRequest = async () => {
-        if (!selectedBank || !userId) return;
+        if (!selectedBank || !user?.id) return;
 
         const orderData = {
-            user_id_fk: userId,
+            user_id_fk: user?.id,
             blood_bank_id_fk: selectedBank.id,
             blood_type: bloodType,
             quantity,
@@ -93,12 +92,17 @@ const SearchPage = () => {
         };
 
         try {
-            await instance.post('/orders', orderData);
-            alert('Blood request submitted successfully!');
+            const { data: resData } = await instance.post('/orders', orderData);
+            const { success, message } = resData;
+
+            if (success) {
+                toast.success(message || 'Blood request put successfully');
+            }
             handleCloseModal();
-        } catch (error) {
-            console.error('Error submitting request:', error);
-            alert('Failed to submit request.');
+            navigate('/requests');
+        } catch (err) {
+            console.error('Error submitting request:', err);
+            toast.error(err?.response?.data?.message || 'Error submitting the request');
         }
     };
 
@@ -109,21 +113,13 @@ const SearchPage = () => {
             </Typography>
 
             <form onSubmit={handleSearch}>
-                <Box
-                    sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        justifyContent: 'center',
-                        gap: 2,
-                        maxWidth: '900px',
-                        mx: 'auto',
-                        mb: 4,
-                    }}>
+                <Box className="flex flex-wrap justify-center gap-2 max-w-[900px] mx-auto mb-4">
+                    {/* Blood Type Select */}
                     <select
                         id="blood-type"
                         value={bloodType}
                         onChange={(e) => setBloodType(e.target.value)}
-                        style={{ width: '200px', padding: '12px', borderRadius: '8px' }}>
+                        className="w-[200px] p-3 rounded-lg border border-gray-300 text-lg bg-white cursor-pointer outline-none">
                         <option value="">Select Blood Type</option>
                         {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((type) => (
                             <option key={type} value={type}>
@@ -132,6 +128,7 @@ const SearchPage = () => {
                         ))}
                     </select>
 
+                    {/* State Select */}
                     <select
                         id="state"
                         value={state}
@@ -139,7 +136,7 @@ const SearchPage = () => {
                             setState(e.target.value);
                             setDistrict('');
                         }}
-                        style={{ width: '200px', padding: '12px', borderRadius: '8px' }}>
+                        className="w-[200px] p-3 rounded-lg border border-gray-300 text-lg bg-white cursor-pointer outline-none">
                         <option value="">Select State</option>
                         {states.map((s) => (
                             <option key={s.state} value={s.state}>
@@ -148,12 +145,18 @@ const SearchPage = () => {
                         ))}
                     </select>
 
+                    {/* District Select */}
                     <select
                         id="district"
                         value={district}
                         onChange={(e) => setDistrict(e.target.value)}
                         disabled={!state}
-                        style={{ width: '200px', padding: '12px', borderRadius: '8px' }}>
+                        className={`w-[200px] p-3 rounded-lg border border-gray-300 text-lg outline-none
+                                ${
+                                    state
+                                        ? 'bg-white cursor-pointer'
+                                        : 'bg-gray-200 cursor-not-allowed'
+                                }`}>
                         <option value="">Select District</option>
                         {districtsList.map((d) => (
                             <option key={d} value={d}>
@@ -162,15 +165,12 @@ const SearchPage = () => {
                         ))}
                     </select>
 
+                    {/* Search Button */}
                     <Button
                         type="submit"
                         variant="contained"
                         startIcon={<SearchIcon />}
-                        sx={{
-                            backgroundColor: '#D32F2F',
-                            '&:hover': { backgroundColor: '#B71C1C' },
-                            minWidth: 150,
-                        }}>
+                        className="bg-red-700 hover:bg-red-900 min-w-[150px] text-white py-3 px-6 rounded-lg">
                         Search
                     </Button>
                 </Box>
@@ -199,7 +199,7 @@ const SearchPage = () => {
                                     Blood Types: {bank.available_blood_types.join(', ')}
                                 </Typography>
 
-                                {isLoggedIn ? (
+                                {user?.isAuthenticated ? (
                                     <Button
                                         variant="contained"
                                         color="primary"
@@ -211,7 +211,7 @@ const SearchPage = () => {
                                     <Button
                                         variant="contained"
                                         color="secondary"
-                                        onClick={() => (window.location.href = '/auth/user')}
+                                        onClick={() => (window.location.href = '/auth')}
                                         sx={{ mt: 2 }}>
                                         Login to Put a Request
                                     </Button>
@@ -251,9 +251,25 @@ const SearchPage = () => {
 
                     <InputLabel>Blood Type</InputLabel>
                     <Select
-                        value={selectedBloodType}
-                        onChange={(e) => setSelectedBloodType(e.target.value)}>
+                        value={selectedBloodType || bloodType}
+                        fullWidth
+                        sx={{ my: 2 }}
+                        onChange={(e) => setSelectedBloodType(e.target.value || bloodType)}>
                         {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((type) => (
+                            <MenuItem key={type} value={type}>
+                                {type}
+                            </MenuItem>
+                        ))}
+                    </Select>
+
+                    <InputLabel>Urgency Level</InputLabel>
+
+                    <Select
+                        value={urgencyLevel}
+                        fullWidth
+                        sx={{ my: 2 }}
+                        onChange={(e) => setUrgencyLevel(e.target.value)}>
+                        {['NORMAL', 'URGENT'].map((type) => (
                             <MenuItem key={type} value={type}>
                                 {type}
                             </MenuItem>

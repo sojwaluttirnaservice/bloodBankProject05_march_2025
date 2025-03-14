@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 
 const AdminProtectedRoutes = ({ children }) => {
     const admin = useSelector((state) => state.admin);
 
-    // Corrected condition to check if the admin is authenticated and has the correct role
-    if (!admin || !admin.isAuthenticated || admin.role !== 'admin') {
+    // Memoize admin authentication check to prevent unnecessary re-renders
+    const isAdminValid = useMemo(() => {
+        return admin?.isAuthenticated && admin?.role === 'admin' && admin?.token;
+    }, [admin]);
+
+    if (!isAdminValid) {
         return <Navigate to="/auth/admin" replace />;
     }
 

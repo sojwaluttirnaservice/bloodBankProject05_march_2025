@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { Navigate } from 'react-router-dom';
 import UserLayout from './UserLayout';
 import AdminLayout from './AdminLayout';
 import BloodBankLayout from './BloodBankLayout';
@@ -11,20 +10,21 @@ const Layout = () => {
     const admin = useSelector((state) => state.admin);
     const bloodBank = useSelector((state) => state.bloodBank);
 
-    if (user && user.role === 'user' && user.token && user.isAuthenticated) {
-        return <UserLayout />;
-    } else if (admin && admin.role === 'admin' && admin.token && admin.isAuthenticated) {
-        return <AdminLayout />;
-    } else if (
-        bloodBank &&
-        bloodBank.role === 'bloodBank' &&
-        bloodBank.token &&
-        bloodBank.isAuthenticated
-    ) {
-        return <BloodBankLayout />;
-    } else {
+    // Memoize layout selection to prevent unnecessary re-renders
+    const selectedLayout = useMemo(() => {
+        if (admin?.isAuthenticated && admin?.role === 'admin' && admin?.token) {
+            return <AdminLayout />;
+        }
+        if (bloodBank?.isAuthenticated && bloodBank?.role === 'bloodBank' && bloodBank?.token) {
+            return <BloodBankLayout />;
+        }
+        if (user?.isAuthenticated && user?.role === 'user' && user?.token) {
+            return <UserLayout />;
+        }
         return <DefaultLayout />;
-    }
+    }, [user, admin, bloodBank]);
+
+    return selectedLayout;
 };
 
 export default Layout;

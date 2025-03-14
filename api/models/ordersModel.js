@@ -146,6 +146,7 @@ const ordersModel = {
         JOIN users u ON o.user_id_fk = u.id
         JOIN blood_banks b ON o.blood_bank_id_fk = b.id
         WHERE o.blood_bank_id_fk = ?
+         ORDER BY o.id DESC
     `;
         return db.query(q, [bloodBankId]);
     },
@@ -160,6 +161,7 @@ const ordersModel = {
         JOIN users u ON o.user_id_fk = u.id
         JOIN blood_banks b ON o.blood_bank_id_fk = b.id
         WHERE o.user_id_fk = ?
+         ORDER BY o.id DESC
     `;
         return db.query(q, [userId]);
     },
@@ -184,6 +186,7 @@ const ordersModel = {
         FROM orders o
         JOIN users u ON o.user_id_fk = u.id
         JOIN blood_banks b ON o.blood_bank_id_fk = b.id
+        ORDER BY o.id DESC
     `;
         return db.query(q);
     },

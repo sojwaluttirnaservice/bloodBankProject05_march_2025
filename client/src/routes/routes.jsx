@@ -1,7 +1,4 @@
-import { Outlet } from 'react-router';
-import BloodBankLayout from '../layouts/BloodBankLayout';
 import DefaultLayout from '../layouts/DefaultLayout';
-import UserLayout from '../layouts/UserLayout';
 import BloodBankDashboardPage from '../pages/bloodBank/BloodBankDashboardPage';
 import NotFoundPage from '../pages/error/NotFoundPage';
 import HomePage from '../pages/HomePage';
@@ -9,9 +6,7 @@ import Layout from '../layouts/Layout';
 import RequestsPage from '../pages/requests/RequestsPage';
 import RequestDetailsPage from '../pages/requests/RequestDetailsPage';
 import BloodBankStockPage from '../pages/bloodBank/BloodBankStockPage';
-import BloodBankLoginPage from '../pages/auth/BloodBankLoginPage';
 import AdminLoginPage from '../pages/auth/AdminLoginPage';
-import UserLoginPage from '../pages/auth/UserLoginPage';
 import BloodBankProtectedRoutes from '../protectedRoutes/BloodBankProtectedRoutes';
 import { ProtectedRoutes } from '../protectedRoutes/CommonProtectedRoutes';
 import AdminProtectedRoutes from '../protectedRoutes/AdminProtectedRoutes';
@@ -21,6 +16,8 @@ import BloodBankListPage from '../pages/bloodBank/BloodBankListPage';
 import AboutPage from '../pages/common/AboutPage';
 import ContactPage from '../pages/common/ContactPage';
 import SearchPage from '../pages/common/SearchPage';
+import LoginPage from '../pages/auth/LoginPage';
+import SignupPage from '../pages/auth/SignupPage';
 
 const routes = [
     {
@@ -96,14 +93,6 @@ const routes = [
                     </BloodBankProtectedRoutes>
                 ),
             },
-            // {
-            //     path: 'requests',
-            //     element: <></>, // Manage requests
-            // },
-            // {
-            //     path: 'donors',
-            //     element: <></>, // View donors
-            // },
         ],
     },
 
@@ -118,22 +107,6 @@ const routes = [
                         <UsersListPage />
                     </AdminProtectedRoutes>
                 ),
-            },
-            {
-                path: 'signup',
-                element: <></>,
-            },
-            {
-                path: 'profile',
-                element: <></>, // User Profile Page
-            },
-            {
-                path: 'requests',
-                element: <></>, // User blood requests
-            },
-            {
-                path: 'donations',
-                element: <></>, // User donation history
             },
         ],
     },
@@ -186,17 +159,18 @@ const routes = [
         element: <Layout />,
         children: [
             {
-                path: 'admin',
-                element: <AdminLoginPage />,
+                path: '',
+                element: <LoginPage />,
             },
 
             {
-                path: 'user',
-                element: <UserLoginPage />,
+                path: 'signup',
+                element: <SignupPage />,
             },
+
             {
-                path: 'blood-bank',
-                element: <BloodBankLoginPage />,
+                path: 'admin',
+                element: <AdminLoginPage />,
             },
         ],
     },

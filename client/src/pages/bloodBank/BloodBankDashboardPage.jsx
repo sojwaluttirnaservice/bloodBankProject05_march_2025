@@ -30,7 +30,7 @@ const BloodBankDashboardPage = () => {
             }
         } catch (err) {
             console.error(err);
-            toast.error(err?.response?.data?.message || 'Unable to fetch admin dashboard stats');
+            toast.error(err?.response?.data?.message || 'Unable to fetch blood dashboard stats');
         }
     };
 

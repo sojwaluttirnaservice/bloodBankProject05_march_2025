@@ -2,8 +2,8 @@ import { createSlice } from "@reduxjs/toolkit";
 import { instance } from "../../axiosInstance/axiosInstance"; // Import axios instance
 
 const initialAdminState = {
-    username: "",
-    role: "",
+    username: null,
+    role: null,
     token: null,
     isAuthenticated: false,
 };
@@ -54,8 +54,8 @@ const adminSlice = createSlice({
         },
 
         onLogout: (state) => {
-            state.username = "";
-            state.role = "";
+            state.username = null;
+            state.role = null;
             state.token = null;
             state.isAuthenticated = false;
 

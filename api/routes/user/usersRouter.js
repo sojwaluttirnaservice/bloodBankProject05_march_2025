@@ -1,14 +1,15 @@
 const usersController = require("../../controllers/usersController");
+const { isAdmin } = require("../../middlewares/authMiddleware");
 const getRouter = require("../../utils/getRouter");
 
 const usersRouter = getRouter();
 
-usersRouter.get('/', usersController.getTotalUsers)
+usersRouter.get('/', isAdmin, usersController.getTotalUsers)
 
-usersRouter.get('/u/:userId')
+// usersRouter.get('/u/:userId')
 
 
-// usersRouter.post('/')
+usersRouter.post('/', usersController.create)
 
 // usersRouter.put('/')
 
