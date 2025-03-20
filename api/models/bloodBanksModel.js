@@ -196,6 +196,66 @@ const bloodBanksModel = {
         return db.query(`SELECT * FROM blood_banks WHERE email = ?`, [email])
     },
 
+    // search: (filters) => {
+    //     let { bloodType, state, district, bloodBankId, searchName, availability, verified } = filters;
+
+    //     let query = `
+    //         SELECT 
+    //             bb.id, 
+    //             bb.name, 
+    //             bb.state, 
+    //             bb.district, 
+    //             bb.address_lines, 
+    //             bb.latitude, 
+    //             bb.longitude, 
+    //             bb.operating_hours, 
+    //             bb.verified, 
+    //             JSON_ARRAYAGG(bs.blood_type) AS available_blood_types,
+    //             SUM(bs.quantity) AS total_quantity
+    //         FROM blood_banks bb
+    //         LEFT JOIN blood_stock bs ON bb.id = bs.blood_bank_id_fk
+    //         WHERE 1=1
+    //     `;
+
+    //     let queryParams = [];
+
+    //     // Apply Filters
+    //     if (bloodType) {
+    //         query += ` AND bs.blood_type = ?`;
+    //         queryParams.push(bloodType);
+    //     }
+    //     if (state) {
+    //         query += ` AND bb.state LIKE ?`;
+    //         queryParams.push(`%${state}%`);
+    //     }
+    //     if (district) {
+    //         query += ` AND bb.district LIKE ?`;
+    //         queryParams.push(`%${district}%`);
+    //     }
+    //     if (bloodBankId) {
+    //         query += ` AND bb.id = ?`;
+    //         queryParams.push(bloodBankId);
+    //     }
+    //     if (searchName) {
+    //         query += ` AND bb.name LIKE ?`;
+    //         queryParams.push(`%${searchName}%`);
+    //     }
+    //     if (availability === "true") {
+    //         query += ` AND bs.quantity > 0`;
+    //     }
+    //     if (verified === "true") {
+    //         query += ` AND bb.verified = 1`;
+    //     }
+
+    //     query += ` 
+    //         GROUP BY bb.id 
+    //         ORDER BY bb.name ASC
+    //     `;
+
+    //     return db.query(query, queryParams);
+    // }
+
+
     search: (filters) => {
         let { bloodType, state, district, bloodBankId, searchName, availability, verified } = filters;
 
@@ -209,8 +269,14 @@ const bloodBanksModel = {
                 bb.latitude, 
                 bb.longitude, 
                 bb.operating_hours, 
-                bb.verified, 
+                bb.verified,
                 JSON_ARRAYAGG(bs.blood_type) AS available_blood_types,
+                JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'blood_type', bs.blood_type, 
+                        'price_per_unit', bs.price_per_unit
+                    )
+                ) AS available_blood_types_prices,
                 SUM(bs.quantity) AS total_quantity
             FROM blood_banks bb
             LEFT JOIN blood_stock bs ON bb.id = bs.blood_bank_id_fk
@@ -254,6 +320,7 @@ const bloodBanksModel = {
 
         return db.query(query, queryParams);
     }
+
 
 };
 

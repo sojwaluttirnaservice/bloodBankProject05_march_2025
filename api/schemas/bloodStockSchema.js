@@ -39,6 +39,7 @@ const bloodStockSchema = sequelize.define(
         price_per_unit: {
             type: INTEGER,
             allowNull: false,
+            defaultValue: 0,
         },
 
         createdAt: {

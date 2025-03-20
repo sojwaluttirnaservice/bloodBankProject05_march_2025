@@ -10,6 +10,8 @@ const db = require("../config/db.connect");
 const ordersModel = {
     // Add a new order
     add: (orderData) => {
+
+        console.log(orderData)
         let q = `
             INSERT INTO orders (
                 user_id_fk, 

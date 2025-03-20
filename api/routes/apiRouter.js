@@ -33,6 +33,9 @@ apiRouter.post('/search', asyncHandler(async (req, res) => {
     let [bloodBanks] = await bloodBanksModel.search(filters)
     // console.log(bloodBanks)
 
+
+    // console.log(bloodBanks[0]?.available_blood_types_prices)
+
     return sendResponse(res, 200, SUCCESS, 'Fetced ...', { bloodBanks })
     // return sendResponse(res, 200, SUCCESS, 'Blood Banks fetched succesfully', { bloodBanks })
 }))

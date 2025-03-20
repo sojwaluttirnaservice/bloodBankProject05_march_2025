@@ -67,6 +67,7 @@ const SearchPage = () => {
 
     // Handle Open Request Modal
     const handleOpenModal = (bank) => {
+        // console.log(bank);
         setSelectedBank(bank);
         setOpenModal(true);
     };
@@ -84,9 +85,9 @@ const SearchPage = () => {
         const orderData = {
             user_id_fk: user?.id,
             blood_bank_id_fk: selectedBank.id,
-            blood_type: bloodType,
+            blood_type: selectedBloodType.blood_type || bloodType,
             quantity,
-            price_at_purchase: selectedBank.price_per_unit || 0,
+            price_at_purchase: selectedBloodType.price_per_unit || 0,
             urgency_level: 'NORMAL',
             delivery_method: 'PICKUP',
         };
@@ -196,7 +197,7 @@ const SearchPage = () => {
                                 </Typography>
                                 <Typography variant="body1" mt={1}>
                                     <BloodtypeIcon fontSize="small" sx={{ mr: 1 }} /> Available
-                                    Blood Types: {bank.available_blood_types.join(', ')}
+                                    Blood Types: {bank.available_blood_types?.join(', ')}
                                 </Typography>
 
                                 {user?.isAuthenticated ? (
@@ -254,12 +255,19 @@ const SearchPage = () => {
                         value={selectedBloodType || bloodType}
                         fullWidth
                         sx={{ my: 2 }}
-                        onChange={(e) => setSelectedBloodType(e.target.value || bloodType)}>
-                        {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((type) => (
-                            <MenuItem key={type} value={type}>
-                                {type}
-                            </MenuItem>
-                        ))}
+                        onChange={(e) => {
+                            setSelectedBloodType(e.target.value);
+                        }}>
+                        <MenuItem key={99} value={''} selected>
+                            --Select--
+                        </MenuItem>
+                        {selectedBank?.available_blood_types_prices?.map((bloodDetails) => {
+                            return (
+                                <MenuItem key={bloodDetails.blood_type} value={bloodDetails}>
+                                    {bloodDetails.blood_type}
+                                </MenuItem>
+                            );
+                        })}
                     </Select>
 
                     <InputLabel>Urgency Level</InputLabel>
