@@ -21,6 +21,8 @@ const RequestDetailsPage = () => {
 
             const { success, message, data } = resData;
 
+            console.log(data);
+
             if (success) {
                 setRequest(data?.order);
             }
@@ -76,7 +78,6 @@ const RequestDetailsPage = () => {
                             </p>
                             <p className="text-gray-700">
                                 <span className="font-semibold">Quantity:</span> {request.quantity}
-                                {' 33'}
                                 Units
                             </p>
                             <p className="text-gray-700">
