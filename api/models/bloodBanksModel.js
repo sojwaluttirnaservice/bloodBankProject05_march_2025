@@ -99,26 +99,68 @@ const bloodBanksModel = {
      * @param {Object} [filters] - Optional filters (state, district, availability).
      * @returns {Promise} - List of blood banks.
      */
+    // getAll: (filters = {}) => {
+    //     let q = `SELECT * FROM blood_banks WHERE 1=1`;
+    //     let params = [];
+
+    //     if (filters.state) {
+    //         q += ` AND state = ?`;
+    //         params.push(filters.state);
+    //     }
+    //     if (filters.district) {
+    //         q += ` AND district = ?`;
+    //         params.push(filters.district);
+    //     }
+    //     if (filters.availability_status !== undefined) {
+    //         q += ` AND availability_status = ?`;
+    //         params.push(filters.availability_status);
+    //     }
+
+    //     return db.query(q, params);
+    // },
+
+
+    /**
+ * Retrieves all blood banks with optional filters, including total blood stock, total requests, and total revenue.
+ * @param {Object} [filters] - Optional filters (state, district, availability_status).
+ * @returns {Promise} - List of blood banks with additional metrics.
+ */
     getAll: (filters = {}) => {
-        let q = `SELECT * FROM blood_banks WHERE 1=1`;
+        let q = `
+        SELECT 
+            bb.*, 
+            COALESCE(SUM(bs.quantity), 0) AS total_blood_stock,
+            COALESCE(COUNT(DISTINCT o.id), 0) AS total_requests,
+            COALESCE(SUM(o.quantity * o.price_at_purchase), 0) AS total_revenue
+        FROM blood_banks bb
+        LEFT JOIN blood_stock bs ON bb.id = bs.blood_bank_id_fk
+        LEFT JOIN orders o ON bb.id = o.blood_bank_id_fk
+        WHERE 1=1
+    `;
+
         let params = [];
 
+        // Apply Filters
         if (filters.state) {
-            q += ` AND state = ?`;
+            q += ` AND bb.state = ?`;
             params.push(filters.state);
         }
         if (filters.district) {
-            q += ` AND district = ?`;
+            q += ` AND bb.district = ?`;
             params.push(filters.district);
         }
         if (filters.availability_status !== undefined) {
-            q += ` AND availability_status = ?`;
+            q += ` AND bb.availability_status = ?`;
             params.push(filters.availability_status);
         }
 
+        q += ` 
+        GROUP BY bb.id
+        ORDER BY bb.name ASC
+    `;
+
         return db.query(q, params);
     },
-
     /**
      * Retrieves a blood bank by its ID.
      * @param {number} id - Blood bank ID.
