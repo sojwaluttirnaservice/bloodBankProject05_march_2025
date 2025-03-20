@@ -66,7 +66,7 @@ const ordersModel = {
             SELECT blood_bank_id_fk,
                 SUM(quantity * price_at_purchase) AS total_revenue
             FROM orders
-            WHERE blood_bank_id_fk = ? AND status = COMPLETED
+            WHERE blood_bank_id_fk = ? AND status = "COMPLETED"
             GROUP BY blood_bank_id_fk
         `;
         return db.query(q, [bloodBankId]);
