@@ -127,16 +127,16 @@ const bloodBanksModel = {
  */
     getAll: (filters = {}) => {
         let q = `
-        SELECT 
-            bb.*, 
-            COALESCE(SUM(bs.quantity), 0) AS total_blood_stock,
-            COALESCE(COUNT(DISTINCT o.id), 0) AS total_requests,
-            COALESCE(SUM(o.quantity * o.price_at_purchase), 0) AS total_revenue
-        FROM blood_banks bb
-        LEFT JOIN blood_stock bs ON bb.id = bs.blood_bank_id_fk
-        LEFT JOIN orders o ON bb.id = o.blood_bank_id_fk
-        WHERE 1=1
-    `;
+            SELECT 
+                bb.*, 
+                COALESCE(SUM(bs.quantity), 0) AS total_blood_stock,
+                COALESCE(COUNT(DISTINCT o.id), 0) AS total_requests,
+                COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.quantity * o.price_at_purchase ELSE 0 END), 0) AS total_revenue
+            FROM blood_banks bb
+            LEFT JOIN blood_stock bs ON bb.id = bs.blood_bank_id_fk
+            LEFT JOIN orders o ON bb.id = o.blood_bank_id_fk
+            WHERE 1=1
+        `;
 
         let params = [];
 
@@ -155,9 +155,9 @@ const bloodBanksModel = {
         }
 
         q += ` 
-        GROUP BY bb.id
-        ORDER BY bb.name ASC
-    `;
+            GROUP BY bb.id
+            ORDER BY bb.name ASC
+        `;
 
         return db.query(q, params);
     },
