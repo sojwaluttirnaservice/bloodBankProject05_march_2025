@@ -1,0 +1,797 @@
+================================================================================
+   BLOOD BANK PRO - COMPREHENSIVE PROJECT CONTEXT
+   Written: March 2026
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Project Overview
+2. Tech Stack
+3. Project Folder Structure
+4. Database Design (Tables & Relationships)
+5. Backend (API) - Detailed Breakdown
+   5.1 Entry Point & Server Setup
+   5.2 Authentication System
+   5.3 Middleware
+   5.4 Models (Database Layer)
+   5.5 Controllers (Business Logic)
+   5.6 Routes (API Endpoints)
+6. Frontend (Client) - Detailed Breakdown
+   6.1 Setup & Build
+   6.2 Routing
+   6.3 State Management (Redux)
+   6.4 Pages & Features
+   6.5 Key Libraries Used
+7. User Roles & Permissions
+8. Core Business Logic Flow
+9. API Endpoint Summary
+10. Key Design Decisions & Notes
+
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+Blood Bank Pro is a full-stack web-based Blood Bank Management System. The goal
+is to connect blood donation seekers (users / patients) with registered blood
+banks across India.
+
+Key capabilities:
+- Users can search for blood banks by blood type, state, district, location.
+- Users can place blood requests (orders) from a specific blood bank.
+- Blood Banks can manage their blood stock inventory (add, increase, decrease).
+- Blood Banks can accept or reject incoming blood requests.
+- When a request is accepted, blood stock is automatically decremented.
+- Admins have a dashboard with platform-wide statistics and oversight.
+- Three distinct login portals: User, Blood Bank, and Admin.
+- JWT-based authentication for all three roles.
+
+
+================================================================================
+2. TECH STACK
+================================================================================
+
+BACKEND (api/)
+--------------
+  Runtime        : Node.js
+  Framework      : Express.js (~4.16.1)
+  Database       : MySQL
+  ORM/Driver     : mysql2 (raw SQL queries, no ORM abstraction layer)
+                   Sequelize is listed as a dependency but raw queries are used.
+  Auth           : JSON Web Tokens (jsonwebtoken ^9.0.2) — 2-hour expiry
+  Middleware     : CORS, cookie-parser, morgan (HTTP logging)
+  File Uploads   : express-fileupload (for any file-related endpoints)
+  Environment    : dotenv for environment variables (.env file)
+  Dev Server     : nodemon (hot reload in dev mode)
+
+FRONTEND (client/)
+------------------
+  Framework      : React 19 + Vite 6 (ES Modules)
+  State Mgmt     : Redux Toolkit + React Redux
+  Routing        : React Router DOM v7
+  UI Components  : Material UI (MUI v6) — icons + components
+  Styling        : TailwindCSS v3 + custom CSS
+  HTTP Client    : Axios (with a custom axios instance)
+  Forms          : React Hook Form v7
+  Notifications  : React Toastify
+  Spinners       : React Spinners (loading UI)
+  PDF/Export     : jsPDF + html2canvas
+  Date Handling  : date-fns
+
+
+================================================================================
+3. PROJECT FOLDER STRUCTURE
+================================================================================
+
+blood-bank-pro/
+├── README.md
+├── .gitignore
+│
+├── api/                          <-- Backend (Node.js + Express)
+│   ├── app.js                    <-- Express app setup, middleware, routes
+│   ├── asyncHandler.js           <-- Utility: wraps async functions for error handling
+│   ├── bin/                      <-- Server startup (www / dbSync)
+│   ├── config/
+│   │   └── db.connect.js         <-- MySQL connection setup
+│   ├── controllers/              <-- Business logic handlers
+│   │   ├── adminController.js
+│   │   ├── authController.js     <-- Login logic for all 3 roles
+│   │   ├── bloodBanksController.js
+│   │   ├── ordersController.js   <-- Order CRUD + status updates + stock sync
+│   │   ├── statsController.js    <-- Aggregate statistics
+│   │   └── usersController.js
+│   ├── dummyData/                <-- Seed/demo data scripts
+│   ├── middlewares/
+│   │   └── authMiddleware.js     <-- JWT verification + role-based access control
+│   ├── models/                   <-- Raw SQL query functions (data access layer)
+│   │   ├── adminModel.js
+│   │   ├── bloodBanksModel.js
+│   │   ├── bloodStocksModel.js
+│   │   └── ordersModel.js
+│   │   └── userModel.js
+│   ├── public/                   <-- Static public files
+│   ├── routes/                   <-- Route definitions per module
+│   │   ├── apiRouter.js          <-- Root API router, mounts all sub-routers
+│   │   ├── admin/
+│   │   │   └── adminRouter.js
+│   │   ├── auth/
+│   │   │   └── authRouter.js
+│   │   ├── bloodBanks/
+│   │   │   └── bloodBanksRouter.js
+│   │   ├── order/
+│   │   │   └── orderRouter.js
+│   │   ├── stats/
+│   │   │   └── statsRouter.js
+│   │   └── user/
+│   │       └── usersRouter.js
+│   ├── schemas/                  <-- (Possibly Sequelize model schemas or DB schema SQL)
+│   └── utils/
+│       ├── getRouter.js          <-- Helper to create Express Router instances
+│       └── responses/
+│           ├── ApiResponse.js    <-- Standardized sendResponse() helper
+│           └── successCodes.js   <-- SUCCESS / FAILURE constants
+│
+└── client/                       <-- Frontend (React + Vite)
+    ├── index.html
+    ├── vite.config.js
+    ├── tailwind.config.js
+    ├── postcss.config.js
+    ├── eslint.config.js
+    ├── src/
+    │   ├── main.jsx              <-- Entry point: ReactDOM.render + Redux Provider
+    │   ├── App.jsx               <-- Root component with React Router
+    │   ├── App.css / index.css   <-- Global styles
+    │   ├── axiosInstance/        <-- Pre-configured Axios client (base URL, headers)
+    │   ├── assets/               <-- Images, icons, static assets
+    │   ├── components/           <-- Reusable UI components (shared across pages)
+    │   ├── dummyData/            <-- Hardcoded mock data for development/testing
+    │   ├── layouts/              <-- Layout wrappers (admin layout, user layout, etc.)
+    │   ├── pages/                <-- Route-level page components
+    │   │   ├── HomePage.jsx      <-- Public landing / home
+    │   │   ├── admin/
+    │   │   │   └── AdminDashboardPage.jsx   <-- Full admin dashboard with stats
+    │   │   ├── auth/
+    │   │   │   ├── LoginPage.jsx            <-- Role selector login page
+    │   │   │   ├── SignupPage.jsx           <-- Role selector signup page
+    │   │   │   ├── AdminLoginPage.jsx
+    │   │   │   ├── BloodBankLogin.jsx
+    │   │   │   ├── BloodBankSignup.jsx
+    │   │   │   ├── UserLogin.jsx
+    │   │   │   └── UserSignup.jsx
+    │   │   ├── bloodBank/
+    │   │   │   ├── BloodBankDashboardPage.jsx   <-- Blood bank home after login
+    │   │   │   ├── BloodBankListPage.jsx         <-- Admin: list of all blood banks
+    │   │   │   └── BloodBankStockPage.jsx        <-- Manage stock per blood bank
+    │   │   ├── common/                          <-- Shared/neutral pages
+    │   │   ├── error/                           <-- 404/error pages
+    │   │   ├── requests/
+    │   │   │   ├── RequestsPage.jsx             <-- List of blood requests/orders
+    │   │   │   └── RequestDetailsPage.jsx        <-- Order detail + Accept/Reject
+    │   │   └── user/
+    │   │       └── UsersListPage.jsx            <-- Admin: list of all users
+    │   ├── protectedRoutes/      <-- HOCs / route guards per role
+    │   ├── redux/
+    │   │   ├── store.js                         <-- Redux store configuration
+    │   │   └── slices/
+    │   │       ├── adminSlice.js                <-- Admin auth state
+    │   │       ├── bloodBankSlice.js            <-- Blood bank auth state
+    │   │       └── userSlice.js                 <-- User auth state
+    │   └── routes/               <-- Route definitions (React Router config)
+    └── public/                   <-- Public static assets (favicon, manifest, etc.)
+
+
+================================================================================
+4. DATABASE DESIGN (TABLES & RELATIONSHIPS)
+================================================================================
+
+The database is MySQL. All queries are written as raw SQL strings.
+
+TABLES:
+-------
+
+1. users
+   - id (PK, auto-increment)
+   - full_name
+   - email
+   - phone (used as login credential)
+   - password (plain text — no hashing currently)
+   - state
+   - district
+   - address
+   - user_type (default: 'person')
+   - createdAt, updatedAt
+
+2. blood_banks
+   - id (PK, auto-increment)
+   - name
+   - email (used as login credential)
+   - phone
+   - password (plain text — no hashing currently)
+   - state
+   - district
+   - address_lines
+   - latitude, longitude (for geo-search)
+   - availability_status (boolean, default: true)
+   - operating_hours
+   - verified (boolean, default: false)
+   - createdAt, updatedAt
+
+3. blood_stock
+   - id (PK)
+   - blood_bank_id_fk (FK → blood_banks.id)
+   - blood_type (e.g., 'A+', 'B-', 'O+', 'AB+', etc.)
+   - quantity (units available)
+   - price_per_unit
+   - createdAt, updatedAt
+   - UNIQUE constraint: (blood_bank_id_fk, blood_type) — one row per blood type per bank
+
+4. orders
+   - id (PK, auto-increment)
+   - user_id_fk (FK → users.id)
+   - blood_bank_id_fk (FK → blood_banks.id)
+   - blood_type
+   - quantity
+   - price_at_purchase (snapshot of price when order was placed)
+   - status (ENUM: 'PENDING', 'COMPLETED', 'REJECTED')
+   - urgency_level (ENUM: 'NORMAL', 'URGENT')
+   - delivery_method (default: 'PICKUP')
+   - createdAt, updatedAt
+
+5. admins
+   - id (PK)
+   - username
+   - password
+   - role (default: 'admin')
+   - createdAt, updatedAt
+
+6. additions (stock addition record/audit log)
+   - blood_type
+   - quantity
+   - blood_bank_id_fk
+
+KEY RELATIONSHIPS:
+------------------
+  users        ──(1:N)──> orders
+  blood_banks  ──(1:N)──> orders
+  blood_banks  ──(1:N)──> blood_stock
+  blood_stock.blood_type is unique per blood_bank (composite unique key)
+
+
+================================================================================
+5. BACKEND (API) — DETAILED BREAKDOWN
+================================================================================
+
+5.1 ENTRY POINT & SERVER SETUP
+-------------------------------
+File: api/app.js
+- Creates Express app
+- Applies middleware: morgan logging, JSON body parsing, URL-encoded parsing,
+  cookie-parser, CORS (open to all origins)
+- Mounts all routes under /api/v1 via apiRouter
+- Has a health check GET / endpoint that returns a success message
+- Has a catch-all 404 handler and a global error handler (returns JSON)
+
+File: api/bin/www (start script)
+- Standard Express www server script, starts HTTP server on configured port
+
+File: api/asyncHandler.js
+- Wraps async route handler functions to auto-catch errors and pass them to
+  Express's next() error handler — avoids try/catch in every controller.
+
+File: api/utils/responses/ApiResponse.js — sendResponse(res, status, success, msg, data)
+- Standardized response shape: { success, message, data }
+
+File: api/utils/responses/successCodes.js
+- Exports SUCCESS = true, FAILURE = false constants for consistent response flags
+
+
+5.2 AUTHENTICATION SYSTEM
+--------------------------
+File: api/controllers/authController.js
+
+Three separate login functions:
+  a) adminLogin     — lookup by username in admins table
+  b) userLogin      — lookup by phone in users table
+  c) bloodBankLogin — lookup by email in blood_banks table
+
+All three:
+  - Validate input fields
+  - Query DB for the entity
+  - Compare password (plain-text comparison — NO bcrypt hashing currently)
+  - On success: generate JWT (expires in 2h) signed with JWT_SECRET_KEY from .env
+  - JWT payload includes: id, role, and the login identifier (username/phone/email)
+  - Return user/admin/bloodBank object with token (password stripped out)
+
+NOTE: Passwords are stored and compared in plain text. This is a security
+      vulnerability that should be fixed before any production deployment
+      (use bcrypt or argon2 for password hashing).
+
+
+5.3 MIDDLEWARE
+--------------
+File: api/middlewares/authMiddleware.js
+
+Exports an authMiddleware object with these guards:
+  - isAdmin           — only allows role === 'admin'
+  - isUser            — only allows role === 'user'
+  - isBloodBank       — only allows role === 'bloodBank'
+  - isAdminOrBloodBank — admin OR blood bank
+  - isUserOrBloodBank  — user OR blood bank
+  - isAdminOrUser      — admin OR user
+  - isAuthenticated    — any authenticated role
+
+All middleware uses verifyToken() which:
+  - Extracts Bearer token from Authorization header
+  - Verifies it against JWT_SECRET_KEY
+  - Attaches decoded payload to req.user
+  - Calls next() if valid, else 401/403 JSON response
+
+
+5.4 MODELS (DATABASE LAYER)
+-----------------------------
+All models use the raw MySQL2 connection pool (db.query). No ORM.
+
+userModel.js:
+  - add()                     — insert new user
+  - update()                  — update user details
+  - getById()                 — get user by ID (no password)
+  - getByEmail()              — get user by email (no password)
+  - getByPhone()              — get user by phone (WITH password for login)
+  - getTotalUsers()           — list all users with order stats (JOIN)
+  - getActiveUsers()          — count users who placed at least 1 order
+  - getInactiveUsers()        — count users who never placed an order
+  - getUserOrderStats()       — order count/spend stats for one user
+  - getTopSpendingUsers()     — top N users by money spent
+  - getUsersByState()         — filter users by state
+  - getUsersByDistrict()      — filter users by district
+  - getUsersWithMostOrders()  — top N users by order count
+  - getUsersGroupedBySpendingRange() — spending bucket distribution
+
+bloodBanksModel.js:
+  - add()                     — insert new blood bank
+  - update()                  — update blood bank details
+  - getAll(filters)           — get all banks with optional state/district/availability
+                                filter; includes: total_blood_stock, total_requests,
+                                total_revenue via JOINs
+  - getById()                 — get one bank by ID
+  - delete()                  — soft delete (sets availability_status = false)
+  - getStats()                — total, verified, active bank counts
+  - searchByName()            — partial name match (LIKE)
+  - getNearbyBanks()          — geo-distance search using Haversine formula
+  - getBloodBankByEmail()     — lookup for login
+  - search(filters)           — advanced search by bloodType, state, district,
+                                bankId, name, availability, verified;
+                                returns available_blood_types and
+                                available_blood_types_prices (JSON_ARRAYAGG)
+
+bloodStocksModel.js:
+  - add()                     — insert new stock entry
+  - updateStock()             — set stock quantity for a blood type at a bank
+  - updatePrice()             — upsert price per unit for a blood type at a bank
+  - increaseStock()           — upsert: add to existing quantity
+  - decreaseStock()           — decrement quantity (GREATEST to avoid going <0),
+                                only if enough stock exists (quantity >= requested)
+  - getBloodBanksByBloodType() — find banks that have a specific blood type in stock
+  - getTotalStockSummary()    — total units per blood type across all banks
+  - getStockByBloodBank()     — stock details (type + qty + price) for one bank
+  - getStockHistory()         — sorted by updatedAt DESC for a bank
+  - getBloodStockByBloodType() — get current quantity for a specific type + bank combo
+  - stockExists()             — boolean check if a record exists
+  - addToAddtionRecord()      — insert into additions audit table
+
+ordersModel.js:
+  - add()                     — create new order (status = 'PENDING' by default)
+  - updateStatus()            — change status of an order
+  - getById()                 — single order lookup
+  - getRevenueByBloodBank()   — total revenue for one bank (COMPLETED orders only)
+  - getRevenueByMonth()       — revenue for a specific month/year
+  - getRevenueByYear()        — revenue for a specific year
+  - getTotalRevenue()         — platform-wide revenue
+  - getOrderStatsByBloodBank() — full stats (total, completed, pending, rejected,
+                                 urgent, normal, revenue) per blood bank
+  - getOrderStatsByMultipleBloodBanks() — bulk stats for multiple banks at once
+  - getOrdersByBloodBank()    — orders for one blood bank (with user + bank details)
+  - getOrdersByUser()         — orders by one user (with user + bank details)
+  - getOrderDetails()         — single order with full joined user + bank info
+  - getOrders()               — all orders on the platform (for admin)
+
+adminModel.js:
+  - add()                     — create a new admin
+  - getAdminByUsername()      — login lookup
+  - getById()                 — get admin by ID
+  - getAdminDashboardStats()  — single query with subqueries returning:
+                                total_users, total_blood_banks, total_orders,
+                                completed/pending/rejected/urgent/normal orders,
+                                total_blood_units_ordered, total_revenue_generated,
+                                total_money_spent_by_users, total_blood_stock_available
+
+
+5.5 CONTROLLERS (BUSINESS LOGIC)
+----------------------------------
+authController.js:
+  - adminLogin, userLogin, bloodBankLogin (see 5.2 above)
+
+bloodBanksController.js:
+  - CRUD for blood banks: add, getAll, getById, update, delete
+  - Likely adds/manages blood bank registration
+
+ordersController.js:
+  - add()         — create a new blood request order
+  - getOrders()   — all orders (admin view)
+  - getOrderDetails()        — single order detail
+  - getOrdersByBloodBank()   — orders for a specific blood bank
+  - getOrdersByUser()        — orders for a specific user
+
+  IMPORTANT — updateStatus():
+    When updating to COMPLETED:
+      1. Fetch the existing order details (blood type, quantity)
+      2. Check current blood stock for that blood type at the relevant bank
+      3. If insufficient stock → return 400 error with available count
+      4. Update order status to COMPLETED
+      5. Decrease blood stock by order quantity via bloodStocksModel.decreaseStock()
+    When updating to REJECTED:
+      - Just update order status (no stock interaction)
+
+usersController.js:
+  - CRUD for users (add, get, update, etc.)
+
+statsController.js:
+  - Aggregate statistics queries for admin/blood bank dashboards
+
+adminController.js:
+  - Admin-specific operations (currently minimal)
+
+
+5.6 ROUTES (API ENDPOINTS)
+----------------------------
+Base path: /api/v1
+
+MOUNTED SUB-ROUTERS:
+  /api/v1/auth/*           → authRouter
+  /api/v1/blood-banks/*    → bloodBanksRouter
+  /api/v1/users/*          → usersRouter
+  /api/v1/admin/*          → adminRouter
+  /api/v1/orders/*         → orderRouter
+  /api/v1/stats/*          → statsRouter
+  /api/v1/search (POST)    → inline blood bank advanced search
+
+AUTH ROUTES (/api/v1/auth/):
+  POST /admin-login         — Admin login
+  POST /user-login          — User login
+  POST /blood-bank-login    — Blood bank login
+  POST /user-register       — User registration
+  POST /blood-bank-register — Blood bank registration
+
+BLOOD BANK ROUTES (/api/v1/blood-banks/):
+  GET    /                  — Get all blood banks
+  GET    /:id               — Get one blood bank by ID
+  POST   /                  — Add new blood bank (admin only)
+  PUT    /:id               — Update blood bank (admin or blood bank)
+  DELETE /:id               — Soft delete blood bank (admin only)
+  GET    /:id/stock         — Get stock for a blood bank
+  POST   /:id/stock         — Add/increase stock at a blood bank
+  PUT    /:id/stock         — Update/set stock quantity
+
+ORDER ROUTES (/api/v1/orders/):
+  POST   /                  — Place new blood request (user)
+  GET    /                  — Get all orders (admin)
+  GET    /:orderId          — Get order details
+  GET    /blood-bank/:bloodBankId — Orders for a specific blood bank
+  GET    /user/:userId      — Orders for a specific user
+  PUT    /status            — Update order status (accept/reject, blood bank)
+
+USER ROUTES (/api/v1/users/):
+  GET    /                  — Get all users (admin)
+  GET    /:id               — Get user by ID
+  PUT    /:id               — Update user profile
+
+ADMIN ROUTES (/api/v1/admin/):
+  GET    /stats             — Admin dashboard statistics
+
+STATS ROUTES (/api/v1/stats/):
+  Various aggregate statistics endpoints
+
+SEARCH (/api/v1/search):
+  POST   /                  — Advanced search for blood banks
+  Body: { bloodType, state, district, bloodBankId, searchName, availability, verified }
+  Returns: List of blood banks with available_blood_types, prices, total_quantity
+
+
+================================================================================
+6. FRONTEND (CLIENT) — DETAILED BREAKDOWN
+================================================================================
+
+6.1 SETUP & BUILD
+-----------------
+- Built with Vite (fast ES module dev server + bundler)
+- React 19 used (latest major version)
+- Tailwind CSS configured with PostCSS
+- ESLint configured via eslint.config.js
+
+6.2 ROUTING
+-----------
+- React Router DOM v7 is used
+- Routes are defined in client/src/routes/
+- Protected routes (HOC wrappers) are in client/src/protectedRoutes/
+  - Separate protected wrappers for Admin, User, and Blood Bank roles
+  - Protection is likely based on Redux state (checking if token/user is present)
+
+6.3 STATE MANAGEMENT (REDUX)
+-----------------------------
+Redux Toolkit is used with three slices:
+
+adminSlice.js:
+  - Stores admin auth state (admin info, token)
+  - Actions: login, logout
+
+bloodBankSlice.js:
+  - Stores blood bank auth state (blood bank info, token)
+  - Actions: login, logout
+
+userSlice.js:
+  - Stores user auth state (user info, token)
+  - Actions: login, logout
+
+store.js:
+  - Combines all three slices into Redux store
+  - Likely persisted to localStorage (common pattern for auth)
+
+6.4 PAGES & FEATURES
+---------------------
+
+HomePage.jsx:
+  - Public landing page for unauthenticated visitors
+  - Likely shows blood bank search, general info
+
+AUTH PAGES (pages/auth/):
+  - LoginPage.jsx     — Role selection screen, links to specific login pages
+  - SignupPage.jsx    — Role selection screen, links to specific signup pages
+  - AdminLoginPage.jsx      — Login form (username + password)
+  - UserLogin.jsx / LoginPage.jsx — Login form (phone + password)
+  - UserSignup.jsx / SignupPage.jsx — Registration form
+  - BloodBankLogin.jsx      — Login form (email + password)
+  - BloodBankSignup.jsx     — Detailed registration (name, email, phone, location, etc.)
+
+ADMIN PAGES (pages/admin/):
+  - AdminDashboardPage.jsx:
+    - Shows platform-wide statistics from /api/v1/admin/stats
+    - Includes: total users, blood banks, orders, revenue, stock counts
+    - Likely includes charts or stat cards
+
+BLOOD BANK PAGES (pages/bloodBank/):
+  - BloodBankDashboardPage.jsx:
+    - Blood bank's personal dashboard after login
+    - Shows order stats for their bank, recent requests
+  - BloodBankListPage.jsx:
+    - Admin view listing all registered blood banks
+    - Shows total stock, requests, revenue per bank
+  - BloodBankStockPage.jsx:
+    - Manage blood inventory for a blood bank
+    - Can add/increase stock for each blood type
+    - Update price per unit
+    - Likely shows a table with 8 blood types (A+, A-, B+, B-, O+, O-, AB+, AB-)
+
+REQUEST PAGES (pages/requests/):
+  - RequestsPage.jsx:
+    - List of all blood requests/orders
+    - Can be viewed by blood bank (their own orders) or admin (all orders)
+    - Shows: blood type, quantity, urgency, status, user name, date
+  - RequestDetailsPage.jsx:
+    - Detailed view of a single order
+    - Blood bank can ACCEPT (→ COMPLETED) or REJECT the order
+    - Acceptance checks available stock before confirming
+
+USER PAGES (pages/user/):
+  - UsersListPage.jsx:
+    - Admin view showing all registered users
+    - Shows order counts, spending stats per user
+
+6.5 KEY LIBRARIES USED IN FRONTEND
+------------------------------------
+  - axios + axiosInstance folder: custom Axios config with base URL set to API
+  - @mui/material + @mui/icons-material: UI component library (tables, buttons, etc.)
+  - react-hook-form: manages form state, validation, submission
+  - react-toastify: toast notifications (success/error feedback)
+  - react-spinners: loading spinners during API calls
+  - date-fns: date formatting utilities
+  - jsPDF + html2canvas: PDF export functionality (print orders/reports)
+  - react-redux + @reduxjs/toolkit: global state management
+
+
+================================================================================
+7. USER ROLES & PERMISSIONS
+================================================================================
+
+The system has 3 distinct roles, each with separate login flows:
+
+ROLE 1: USER (regular blood seeker / patient)
+  - Login via: phone + password
+  - JWT role value: "user"
+  - Can:
+    - Browse blood banks (search by blood type, location)
+    - Place blood requests (create orders)
+    - View their own order history and status
+  - Cannot: access admin or blood bank dashboards
+
+ROLE 2: BLOOD BANK (registered blood bank institution)
+  - Login via: email + password
+  - JWT role value: "bloodBank"
+  - Can:
+    - View and manage their blood stock inventory
+    - View incoming blood requests targeted at their bank
+    - Accept (COMPLETED) or Reject blood requests
+    - View their own stats (revenue, total orders, etc.)
+  - Cannot: access admin dashboard, view other banks' data
+
+ROLE 3: ADMIN (platform administrator)
+  - Login via: username + password
+  - JWT role value: "admin"
+  - Can:
+    - View platform-wide statistics and dashboards
+    - List and manage all users
+    - List and manage all blood banks
+    - View all orders across the platform
+    - Register new blood banks
+  - Cannot: (all access in practice)
+
+MIDDLEWARE COMBINATIONS AVAILABLE:
+  - isAdmin, isUser, isBloodBank
+  - isAdminOrBloodBank (for operations both can do)
+  - isAdminOrUser (for user-related operations admin can also do)
+  - isUserOrBloodBank
+  - isAuthenticated (any logged-in role)
+
+
+================================================================================
+8. CORE BUSINESS LOGIC FLOW
+================================================================================
+
+FLOW 1: USER PLACES A BLOOD REQUEST
+  1. User browses/searches blood banks for their blood type + location
+  2. User selects a blood bank and blood type
+  3. User submits request (blood type, quantity, urgency, delivery method)
+  4. POST /api/v1/orders → ordersController.add()
+  5. Order saved with status = 'PENDING'
+  6. Blood bank receives the request in their dashboard
+
+FLOW 2: BLOOD BANK ACCEPTS A REQUEST
+  1. Blood bank views pending requests at GET /api/v1/orders/blood-bank/:id
+  2. Blood bank opens request details
+  3. Blood bank clicks "Accept"
+  4. PUT /api/v1/orders/status → ordersController.updateStatus({ status: 'COMPLETED', ... })
+  5. Backend fetches existing order (quantity, blood_type)
+  6. Backend checks current stock: bloodStocksModel.getBloodStockByBloodType()
+  7. If stock < requested quantity → return 400 error (cannot accept)
+  8. If enough stock:
+     a. Update order status to 'COMPLETED'
+     b. Decrease blood stock by order quantity via bloodStocksModel.decreaseStock()
+  9. Frontend shows success and updates order status
+
+FLOW 3: BLOOD BANK REJECTS A REQUEST
+  1. Same as above but status = 'REJECTED'
+  2. No stock check needed
+  3. Order status updated to 'REJECTED'
+
+FLOW 4: BLOOD BANK ADDS BLOOD STOCK
+  1. Blood bank navigates to stock management page
+  2. Enters blood type, quantity (and optionally price)
+  3. POST or PUT to blood stock endpoint
+  4. bloodStocksModel.increaseStock() uses ON DUPLICATE KEY UPDATE
+     to either insert new or add to existing quantity
+  5. Stock count updated on dashboard
+
+FLOW 5: SEARCH FOR BLOOD BANKS
+  1. User submits search form (blood type, state, district, etc.)
+  2. POST /api/v1/search with filter payload
+  3. bloodBanksModel.search(filters) runs dynamic SQL with multiple optional filters
+  4. Returns list of blood banks with:
+     - available blood types (JSON array)
+     - blood types + prices (JSON array of objects)
+     - total quantity
+  5. Frontend renders matching blood banks for user to choose from
+
+
+================================================================================
+9. API ENDPOINT SUMMARY
+================================================================================
+
+BASE: /api/v1
+
+AUTH:
+  POST   /auth/admin-login          No auth required
+  POST   /auth/user-login           No auth required
+  POST   /auth/blood-bank-login     No auth required
+  POST   /auth/user-register        No auth required (public registration)
+  POST   /auth/blood-bank-register  No auth or admin required
+
+BLOOD BANKS:
+  GET    /blood-banks               isAuthenticated or public
+  GET    /blood-banks/:id           isAuthenticated or public
+  POST   /blood-banks               isAdmin
+  PUT    /blood-banks/:id           isAdmin or isBloodBank
+  DELETE /blood-banks/:id           isAdmin
+  GET    /blood-banks/:id/stock     isAuthenticated
+  POST   /blood-banks/:id/stock     isBloodBank or isAdmin
+  PUT    /blood-banks/:id/stock     isBloodBank or isAdmin
+
+USERS:
+  GET    /users                     isAdmin
+  GET    /users/:id                 isAdminOrUser
+  PUT    /users/:id                 isUser
+
+ORDERS:
+  POST   /orders                    isUser
+  GET    /orders                    isAdmin
+  GET    /orders/:orderId           isAuthenticated
+  GET    /orders/blood-bank/:id     isBloodBank or isAdmin
+  GET    /orders/user/:id           isUser or isAdmin
+  PUT    /orders/status             isBloodBank
+
+ADMIN:
+  GET    /admin/stats               isAdmin
+
+STATS:
+  GET    /stats/*                   isAdminOrBloodBank (various stats endpoints)
+
+SEARCH:
+  POST   /search                    public or isAuthenticated
+
+
+================================================================================
+10. KEY DESIGN DECISIONS & NOTES
+================================================================================
+
+1. NO PASSWORD HASHING:
+   Passwords are stored as plain text in the database and compared as strings.
+   This is a major security issue. Before production, ALL passwords should be
+   hashed using bcrypt (or similar) at registration and compared at login.
+
+2. NO ORM:
+   Despite having Sequelize as a dependency, the project uses raw SQL queries
+   via mysql2. This gives full SQL control but requires manual query management.
+
+3. STANDARDIZED API RESPONSES:
+   All API responses use sendResponse() for consistent shape:
+   { success: true/false, message: "...", data: { ... } }
+
+4. STOCK SAFETY:
+   decreaseStock() uses SQL's GREATEST(quantity - ?, 0) to prevent negative stock.
+   Additionally, order acceptance validates sufficient stock before decrement.
+
+5. SOFT DELETE FOR BLOOD BANKS:
+   Blood bank deletion sets availability_status = false rather than removing
+   the record, preserving historical order data.
+
+6. GEOLOCATION SUPPORT:
+   Blood banks store latitude/longitude. The getNearbyBanks() function uses
+   the Haversine formula directly in SQL to find banks within a given radius.
+
+7. AUDIT TRAIL FOR STOCK ADDITIONS:
+   addToAddtionRecord() logs every stock addition to an 'additions' table for
+   tracking purposes.
+
+8. JWT TOKEN STRUCTURE:
+   - Admin token: { id: username, role: 'admin', username }
+   - User token: { id: user.id, role: 'user', phone }
+   - Blood Bank token: { id: bloodBank.username, role: 'bloodBank', email }
+   All tokens expire in 2 hours.
+
+9. CORS:
+   CORS is currently configured with app.use(cors()) which allows ALL origins.
+   This should be restricted to specific domains in production.
+
+10. PRICE SNAPSHOT:
+    Orders store price_at_purchase as a snapshot of the price at the time of
+    ordering. This ensures historical data is not affected by future price changes.
+
+11. DELIVERY METHOD:
+    Orders support a delivery_method field (default: 'PICKUP'). Future versions
+    may expand this to home delivery with address tracking.
+
+12. URGENCY LEVELS:
+    Orders have urgency_level (NORMAL or URGENT). The admin/blood bank dashboards
+    separately count urgent pending orders for prioritization.
+
+================================================================================
+END OF PROJECT CONTEXT
+================================================================================
