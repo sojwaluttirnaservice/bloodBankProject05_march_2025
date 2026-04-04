@@ -1,0 +1,366 @@
+================================================================================
+   BLOOD BANK MANAGEMENT SYSTEM — CODE SNIPPETS
+   Project: Blood Bank Pro | College Blackbook Report
+================================================================================
+
+
+----------------------------------
+1. BACKEND — EXPRESS SERVER SETUP
+----------------------------------
+Explanation:
+The entry point for the Node.js backend. Express is initialized, essential
+middleware (CORS, JSON parsing, cookie parser) is applied, and all API routes
+are mounted under the /api/v1 prefix.
+
+Code:
+
+const express    = require('express');
+const cors       = require('cors');
+const dotenv     = require('dotenv');
+const cookieParser = require('cookie-parser');
+const apiRouter  = require('./routes/apiRouter');
+
+dotenv.config();            // Load environment variables from .env
+const app = express();
+
+// Core middleware
+app.use(cors());            // Allow cross-origin requests
+app.use(express.json());    // Parse incoming JSON request bodies
+app.use(cookieParser());    // Parse cookies from request headers
+
+// Mount all API routes under /api/v1
+app.use('/api/v1', apiRouter);
+
+// Global error handler
+app.use((err, req, res, next) => {
+    res.status(err.status || 500).json({ success: false, message: err.message });
+});
+
+module.exports = app;
+
+
+----------------------------------
+2. AUTHENTICATION CONTROLLER — LOGIN USING JWT
+----------------------------------
+Explanation:
+Handles user login by verifying phone and password against the database.
+On success, a signed JWT token (expires in 2 hours) is generated and returned
+along with the user object (password is stripped from the response).
+
+Code:
+
+const jwt       = require('jsonwebtoken');
+const userModel = require('../models/userModel');
+
+const userLogin = async (req, res) => {
+    const { phone, password } = req.body;
+
+    if (!phone || !password)
+        return res.status(400).json({ success: false, message: "Phone and password required" });
+
+    // Fetch user record from database by phone number
+    const [rows] = await userModel.getByPhone(phone);
+    const user   = rows[0];
+
+    if (!user || user.password !== password)
+        return res.status(401).json({ success: false, message: "Invalid credentials" });
+
+    // Remove password before sending response
+    const { password: _, ...safeUser } = user;
+
+    // Sign JWT with user ID and role
+    const token = jwt.sign(
+        { id: user.id, role: 'user', phone: user.phone },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: '2h' }
+    );
+
+    return res.status(200).json({ success: true, data: { user: { ...safeUser, token } } });
+};
+
+
+----------------------------------
+3. MIDDLEWARE — JWT VERIFICATION & ROLE-BASED ACCESS
+----------------------------------
+Explanation:
+A reusable middleware that extracts the Bearer token from the Authorization
+header, verifies it using the secret key, and attaches the decoded user data
+to the request object. Role-specific guards (isAdmin, isUser, isBloodBank)
+then check the role before allowing access.
+
+Code:
+
+const jwt = require('jsonwebtoken');
+
+// Extract and verify JWT from Authorization header
+const verifyToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+
+    if (!token)
+        return res.status(401).json({ success: false, message: "No token provided" });
+
+    try {
+        req.user = jwt.verify(token, process.env.JWT_SECRET_KEY); // Attach decoded data
+        next();
+    } catch (err) {
+        return res.status(403).json({ success: false, message: "Invalid or expired token" });
+    }
+};
+
+// Middleware: allow only Admins
+const isAdmin = (req, res, next) => {
+    verifyToken(req, res, () => {
+        if (req.user?.role === 'admin') return next();
+        res.status(403).json({ success: false, message: "Access denied. Admins only." });
+    });
+};
+
+// Middleware: allow only Blood Banks
+const isBloodBank = (req, res, next) => {
+    verifyToken(req, res, () => {
+        if (req.user?.role === 'bloodBank') return next();
+        res.status(403).json({ success: false, message: "Access denied. Blood Banks only." });
+    });
+};
+
+
+----------------------------------
+4. BLOOD STOCK UPDATE LOGIC — ACCEPT ORDER & DECREMENT STOCK
+----------------------------------
+Explanation:
+Core business logic triggered when a blood bank accepts a pending request.
+It checks whether sufficient stock exists before marking the order as COMPLETED.
+If stock is adequate, it atomically decrements the blood stock quantity.
+
+Code:
+
+const updateStatus = async (req, res) => {
+    const { status, blood_bank_id_fk, id: orderId } = req.body;
+
+    if (status === 'COMPLETED') {
+
+        // Step 1: Fetch order details (blood type + quantity needed)
+        const [orderRows]      = await ordersModel.getById(orderId);
+        const order            = orderRows[0];
+
+        // Step 2: Check current stock for this blood type at the blood bank
+        const [stockRows]      = await bloodStocksModel.getBloodStockByBloodType(
+                                     order.blood_type, blood_bank_id_fk);
+        const availableStock   = stockRows?.[0]?.stock_quantity || 0;
+
+        // Step 3: Reject if not enough stock
+        if (order.quantity > availableStock) {
+            return res.status(400).json({
+                success: false,
+                message: `Only ${availableStock} units of ${order.blood_type} available.`
+            });
+        }
+
+        // Step 4: Mark order as COMPLETED
+        await ordersModel.updateStatus(orderId, 'COMPLETED');
+
+        // Step 5: Decrease blood stock (SQL uses GREATEST to prevent negative values)
+        await bloodStocksModel.decreaseStock({
+            quantity: order.quantity,
+            blood_bank_id_fk,
+            blood_type: order.blood_type
+        });
+
+        return res.status(200).json({ success: true, message: "Request Accepted" });
+    }
+
+    // Handle REJECTED status
+    await ordersModel.updateStatus(orderId, status);
+    return res.status(200).json({ success: true, message: "Request Rejected" });
+};
+
+
+----------------------------------
+5. API ROUTE EXAMPLE — ORDERS ROUTER
+----------------------------------
+Explanation:
+Defines all RESTful routes for the orders module. Middleware guards are applied
+per route to ensure only authorized roles can access each endpoint.
+
+Code:
+
+const express        = require('express');
+const router         = express.Router();
+const ordersController = require('../../controllers/ordersController');
+const authMiddleware = require('../../middlewares/authMiddleware');
+
+// Place a new blood request — Users only
+router.post('/', authMiddleware.isUser, ordersController.add);
+
+// Get all orders on the platform — Admin only
+router.get('/', authMiddleware.isAdmin, ordersController.getOrders);
+
+// Get all orders for a specific blood bank — Blood Bank or Admin
+router.get('/blood-bank/:bloodBankId',
+    authMiddleware.isAdminOrBloodBank,
+    ordersController.getOrdersByBloodBank
+);
+
+// Get all orders placed by a specific user — User or Admin
+router.get('/user/:userId',
+    authMiddleware.isAdminOrUser,
+    ordersController.getOrdersByUser
+);
+
+// Accept or Reject an order — Blood Banks only
+router.put('/status', authMiddleware.isBloodBank, ordersController.updateStatus);
+
+module.exports = router;
+
+
+----------------------------------
+6. MYSQL QUERY EXAMPLES — INSERT / SELECT / UPDATE
+----------------------------------
+Explanation:
+Raw SQL queries written using mysql2. The project uses parameterized queries
+(? placeholders) to prevent SQL injection. These patterns are used consistently
+across all models.
+
+Code:
+
+// INSERT — Add a new blood request order
+const addOrder = (orderData) => {
+    const q = `
+        INSERT INTO orders 
+            (user_id_fk, blood_bank_id_fk, blood_type, quantity, 
+             price_at_purchase, status, urgency_level, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, 'PENDING', ?, NOW(), NOW())
+    `;
+    return db.query(q, [
+        orderData.user_id_fk, orderData.blood_bank_id_fk,
+        orderData.blood_type,  orderData.quantity,
+        orderData.price_at_purchase, orderData.urgency_level || 'NORMAL'
+    ]);
+};
+
+// SELECT — Get all orders for a blood bank with user and bank details (JOIN)
+const getOrdersByBloodBank = (bloodBankId) => {
+    const q = `
+        SELECT o.*, u.full_name AS user_name, u.phone AS user_phone,
+               b.name AS blood_bank_name, b.district AS blood_bank_district
+        FROM   orders o
+        JOIN   users       u ON o.user_id_fk       = u.id
+        JOIN   blood_banks b ON o.blood_bank_id_fk  = b.id
+        WHERE  o.blood_bank_id_fk = ?
+        ORDER  BY o.id DESC
+    `;
+    return db.query(q, [bloodBankId]);
+};
+
+// UPDATE — Increase blood stock (upsert using ON DUPLICATE KEY)
+const increaseStock = (stockData) => {
+    const q = `
+        INSERT INTO blood_stock (blood_bank_id_fk, blood_type, quantity, createdAt, updatedAt)
+        VALUES (?, ?, ?, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            quantity   = quantity + VALUES(quantity),
+            updatedAt  = NOW()
+    `;
+    return db.query(q, [stockData.blood_bank_id_fk, stockData.blood_type, stockData.quantity]);
+};
+
+
+----------------------------------
+7. FRONTEND — AXIOS API CALL (Place Order)
+----------------------------------
+Explanation:
+Demonstrates how the React frontend communicates with the backend using Axios.
+A pre-configured Axios instance (with base URL and auth token header) is used
+to place a blood request from the user's dashboard.
+
+Code:
+
+// axiosInstance/index.js — Pre-configured Axios instance
+import axios from 'axios';
+
+const axiosInstance = axios.create({
+    baseURL: 'http://localhost:5000/api/v1',   // API base URL
+});
+
+// Attach JWT token to every request automatically
+axiosInstance.interceptors.request.use((config) => {
+    const user  = JSON.parse(localStorage.getItem('user'));
+    if (user?.token)
+        config.headers.Authorization = `Bearer ${user.token}`;
+    return config;
+});
+
+export default axiosInstance;
+
+// -------------------------------------------------------
+
+// Usage in a component — Place a blood request
+import axiosInstance from '../axiosInstance';
+import { toast }     from 'react-toastify';
+
+const placeBloodRequest = async (orderData) => {
+    try {
+        const response = await axiosInstance.post('/orders', {
+            blood_bank_id_fk  : orderData.bloodBankId,
+            blood_type        : orderData.bloodType,
+            quantity          : orderData.quantity,
+            urgency_level     : orderData.urgency,     // 'NORMAL' or 'URGENT'
+            delivery_method   : 'PICKUP',
+            price_at_purchase : orderData.pricePerUnit
+        });
+        toast.success(response.data.message);          // Show success notification
+    } catch (error) {
+        toast.error(error.response?.data?.message || "Request failed");
+    }
+};
+
+
+----------------------------------
+8. REDUX SLICE EXAMPLE — USER AUTH STATE
+----------------------------------
+Explanation:
+Manages the authentication state for the logged-in user using Redux Toolkit.
+On login, the user object and token are stored in Redux state and persisted to
+localStorage. On logout, state is cleared.
+
+Code:
+
+import { createSlice } from '@reduxjs/toolkit';
+
+const initialState = {
+    user  : JSON.parse(localStorage.getItem('user')) || null,   // Persist on reload
+    token : JSON.parse(localStorage.getItem('user'))?.token || null,
+};
+
+const userSlice = createSlice({
+    name: 'user',
+    initialState,
+    reducers: {
+
+        // Called after successful login API response
+        loginUser: (state, action) => {
+            state.user  = action.payload;
+            state.token = action.payload.token;
+            localStorage.setItem('user', JSON.stringify(action.payload)); // Persist
+        },
+
+        // Clear state on logout
+        logoutUser: (state) => {
+            state.user  = null;
+            state.token = null;
+            localStorage.removeItem('user');
+        },
+    },
+});
+
+export const { loginUser, logoutUser } = userSlice.actions;
+export default userSlice.reducer;
+
+// Usage in Login component:
+// dispatch(loginUser(response.data.data.user));
+
+
+================================================================================
+END OF CODE SNIPPETS
+================================================================================
